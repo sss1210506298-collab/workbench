@@ -1,0 +1,957 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#f4f5f7">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/icon-512.png">
+<link rel="icon" href="icons/icon-512.png">
+<title>我的工作台</title>
+<style>
+:root{
+  --bg:#f4f5f7; --card:#fff; --ink:#1f2430; --muted:#8b93a1; --line:#eceef2;
+  --money:#2f9e6e; --work:#3b82f6; --study:#8b5cf6; --fit:#f97316;
+  --radius:16px; --shadow:0 1px 3px rgba(20,25,40,.06),0 6px 18px rgba(20,25,40,.04);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--ink)}
+body{font:15px/1.6 system-ui,-apple-system,"PingFang SC","Microsoft YaHei",sans-serif}
+.app{max-width:480px;margin:0 auto;padding:0 14px 92px}
+
+header{padding:18px 2px 10px}
+.h-top{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.h-title{font-size:19px;font-weight:700;letter-spacing:.2px}
+.h-date{color:var(--muted);font-size:13px;margin-top:2px}
+.icon-btn{border:1px solid var(--line);background:var(--card);color:var(--muted);border-radius:10px;
+  width:36px;height:36px;font-size:16px;display:grid;place-items:center;cursor:pointer}
+
+.summary{display:flex;gap:8px;margin:12px 0 4px;overflow:auto;padding-bottom:2px}
+.summary .s{flex:1 0 auto;min-width:96px;background:var(--card);border-radius:12px;padding:9px 11px;box-shadow:var(--shadow)}
+.summary .s b{display:block;font-size:17px;font-variant-numeric:tabular-nums}
+.summary .s span{font-size:11px;color:var(--muted)}
+
+.tab{display:none;padding-top:10px}
+.tab.on{display:block}
+#tab-money{--accent:var(--money)}
+#tab-work{--accent:var(--work)}
+#tab-photo{--accent:var(--study)}
+#tab-fit{--accent:var(--fit)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.card{background:var(--card);border-radius:var(--radius);padding:14px;box-shadow:var(--shadow);margin-bottom:10px}
+.card h3{margin:0 0 10px;font-size:14px;font-weight:600;display:flex;align-items:center;justify-content:space-between;gap:8px}
+.card h3 .sub{font-weight:400;color:var(--muted);font-size:12px}
+.stat{background:var(--card);border-radius:14px;padding:12px;box-shadow:var(--shadow);position:relative;overflow:hidden}
+.stat:before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--accent,var(--money))}
+.stat .lb{font-size:12px;color:var(--muted)}
+.stat .val{font-size:22px;font-weight:700;font-variant-numeric:tabular-nums;margin-top:2px}
+.stat .val small{font-size:13px;font-weight:500;color:var(--muted);margin-left:2px}
+.stat .note{font-size:11px;color:var(--muted);margin-top:2px}
+
+.bar{height:8px;border-radius:99px;background:#eef0f4;overflow:hidden}
+.bar>i{display:block;height:100%;border-radius:99px;background:var(--accent,var(--money));transition:width .3s}
+.bar-row{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-top:6px}
+
+.donut-wrap{display:flex;gap:14px;align-items:center}
+.donut{width:132px;height:132px;flex:0 0 auto}
+.legend{flex:1;min-width:0}
+.legend li{display:flex;align-items:center;gap:7px;font-size:13px;padding:3px 0;list-style:none}
+.legend .dot{width:9px;height:9px;border-radius:3px;flex:0 0 auto}
+.legend .nm{flex:1;color:#41485a;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.legend .vv{font-variant-numeric:tabular-nums;color:var(--muted)}
+
+.segs{display:flex;gap:4px;background:#eef0f4;padding:3px;border-radius:10px}
+.segs button{border:0;background:transparent;padding:4px 10px;border-radius:8px;font-size:12px;color:var(--muted);cursor:pointer}
+.segs button.on{background:#fff;color:var(--ink);font-weight:600;box-shadow:0 1px 2px rgba(0,0,0,.06)}
+
+.row{display:flex;gap:8px}
+input,select,textarea,button{font:inherit;color:inherit}
+input[type=text],input[type=number],input[type=date],select,textarea{
+  width:100%;border:1px solid var(--line);background:#fafbfc;border-radius:11px;padding:10px 11px;outline:none}
+input:focus,select:focus,textarea:focus{border-color:#cfd6e2;background:#fff}
+textarea{resize:vertical;min-height:64px}
+.btn{border:0;background:var(--accent,var(--money));color:#fff;border-radius:11px;padding:10px 14px;font-weight:600;cursor:pointer;white-space:nowrap}
+.btn.ghost{background:#f1f3f7;color:#5a6274;font-weight:500}
+.btn.mini{padding:6px 10px;font-size:13px;border-radius:9px}
+
+ul.list{list-style:none;margin:0;padding:0}
+ul.list li{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--line)}
+ul.list li:last-child{border-bottom:0}
+.chk{width:21px;height:21px;border-radius:7px;border:1.6px solid #d3d9e3;flex:0 0 auto;cursor:pointer;
+  display:grid;place-items:center;font-size:12px;color:#fff;background:#fff}
+.chk.on{background:var(--accent,var(--money));border-color:var(--accent,var(--money))}
+.li-main{flex:1;min-width:0}
+.li-main .t{font-size:14px}
+.li-main .t.done{color:var(--muted);text-decoration:line-through}
+.li-main .m{font-size:11px;color:var(--muted);margin-top:1px}
+.x{border:0;background:transparent;color:#c2c8d4;font-size:17px;cursor:pointer;padding:0 2px;line-height:1}
+.amount{font-variant-numeric:tabular-nums;font-weight:600}
+.amount.out{color:#e05252}
+.amount.in{color:var(--money)}
+
+.day-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
+.day-cell{background:#f7f8fa;border-radius:10px;padding:7px 0;text-align:center;font-size:11px;color:var(--muted)}
+.day-cell b{display:block;font-size:12px;color:#41485a;font-weight:600}
+.day-cell.done{background:#e8f5ee;color:#2f9e6e}
+.day-cell.done b{color:#2f9e6e}
+.day-cell.today{outline:1.5px solid var(--accent,var(--money));outline-offset:-1.5px}
+
+.week-row{display:flex;align-items:center;gap:8px;padding:5px 0}
+.week-row .d{width:42px;font-size:13px;color:var(--muted);flex:0 0 auto}
+.week-row input{padding:8px 10px}
+.week-row.today .d{color:var(--fit);font-weight:700}
+
+.kv{display:flex;justify-content:space-between;font-size:13px;padding:5px 0;border-bottom:1px dashed var(--line)}
+.kv:last-child{border-bottom:0}
+.kv span{color:var(--muted)}
+.kv b{font-variant-numeric:tabular-nums}
+.hint{font-size:11.5px;color:var(--muted);line-height:1.6;margin-top:8px}
+.big{font-size:26px;font-weight:700;font-variant-numeric:tabular-nums}
+.pill{display:inline-block;background:#eef0f4;border-radius:99px;padding:2px 9px;font-size:11px;color:#5a6274;margin-right:5px}
+.empty{color:var(--muted);font-size:13px;text-align:center;padding:14px 0}
+
+.chips{display:flex;flex-wrap:wrap;gap:7px}
+.chip{border:1px solid var(--line);background:#fff;border-radius:99px;padding:7px 13px;font-size:13.5px;cursor:pointer;color:#4a5164}
+.chip.on{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+.chip.add{border-style:dashed;color:var(--muted)}
+.chip .rm{margin-left:6px;color:#e05252;font-weight:700}
+.amt-in{width:100%;text-align:center;font-size:28px;font-weight:700;font-variant-numeric:tabular-nums;
+  padding:13px;border-radius:14px;border:1px solid var(--line);background:#fafbfc}
+.timer-box{display:flex;align-items:center;gap:12px;margin:4px 0 10px}
+.timer-box .tm{font-size:34px;font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:1px;color:var(--study)}
+.ex-row{display:flex;align-items:flex-start;gap:10px;padding:9px 0;border-bottom:1px solid var(--line)}
+.ex-row:last-child{border-bottom:0}
+.ex-row .nm{font-size:14px;line-height:1.45}
+.ex-row .st{font-size:12px;color:var(--muted);margin-top:1px}
+.plan-day{border:1px solid var(--line);border-radius:13px;padding:10px;margin-bottom:9px}
+.plan-day.today{border-color:var(--fit);background:#fffaf5}
+.plan-day .hd{display:flex;gap:8px;align-items:center}
+.plan-day .hd b{font-size:13px;color:var(--fit);flex:0 0 40px}
+.plan-day input{background:#f7f8fa}
+.plan-day .exline{display:flex;gap:6px;margin-top:6px}
+.plan-day .exline input{flex:1;padding:8px 10px;font-size:13.5px}
+
+nav.tabbar{position:fixed;left:0;right:0;bottom:0;background:rgba(255,255,255,.94);backdrop-filter:blur(10px);
+  border-top:1px solid var(--line);display:flex;padding:6px 0 calc(6px + env(safe-area-inset-bottom))}
+nav.tabbar button{flex:1;border:0;background:transparent;padding:6px 0;color:var(--muted);font-size:11px;cursor:pointer}
+nav.tabbar button i{display:block;font-size:19px;font-style:normal;line-height:1.3;filter:grayscale(1);opacity:.55}
+nav.tabbar button.on{color:var(--ink);font-weight:600}
+nav.tabbar button.on i{filter:none;opacity:1}
+
+.mask{position:fixed;inset:0;background:rgba(20,25,40,.35);display:none;place-items:center;padding:20px;z-index:9}
+.mask.on{display:grid}
+.sheet{background:#fff;border-radius:18px;padding:18px;width:100%;max-width:400px;max-height:80vh;overflow:auto}
+.sheet h2{margin:0 0 6px;font-size:16px}
+.sheet .hint{margin:6px 0 14px}
+.sheet .btns{display:flex;gap:8px;margin-top:14px}
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="h-top">
+      <div>
+        <div class="h-title">我的工作台</div>
+        <div class="h-date" id="hDate"></div>
+      </div>
+      <button class="icon-btn" id="btnSet" title="设置与备份">⚙</button>
+    </div>
+    <div class="summary" id="summary"></div>
+  </header>
+
+  <main>
+    <section class="tab on" id="tab-money"></section>
+    <section class="tab" id="tab-work"></section>
+    <section class="tab" id="tab-photo"></section>
+    <section class="tab" id="tab-fit"></section>
+  </main>
+</div>
+
+<nav class="tabbar" id="tabbar">
+  <button data-tab="money" class="on"><i>💰</i>存钱</button>
+  <button data-tab="work"><i>📋</i>工作</button>
+  <button data-tab="photo"><i>📷</i>摄影</button>
+  <button data-tab="fit"><i>💪</i>健身</button>
+</nav>
+
+<div class="mask" id="mask">
+  <div class="sheet">
+    <h2>设置与备份</h2>
+    <p class="hint">数据存在这台手机的浏览器里（localStorage），不会上传。换手机或清缓存前先导出备份。</p>
+    <div class="btns">
+      <button class="btn ghost" id="btnExport">导出备份</button>
+      <button class="btn ghost" id="btnImport">导入备份</button>
+    </div>
+    <div class="btns">
+      <button class="btn ghost" id="btnDemo">填入示例数据</button>
+      <button class="btn ghost" id="btnReset" style="color:#e05252">清空全部</button>
+    </div>
+    <div class="btns"><button class="btn" id="btnClose" style="flex:1">关闭</button></div>
+    <input type="file" id="fileIn" accept="application/json" style="display:none">
+  </div>
+</div>
+
+<script>
+/* ------------------------------------------------------------------
+   数据结构（以后加字段就改这里，version 变了会自动补默认值）
+------------------------------------------------------------------ */
+const VERSION = 1;
+const TAGS = [
+  ["吃饭","#f97316"],["交通","#3b82f6"],["生活","#14b8a6"],["购物","#ec4899"],
+  ["娱乐","#8b5cf6"],["医疗","#ef4444"],["人情","#eab308"],["其他","#64748b"]
+];
+const PALETTE = ["#f97316","#3b82f6","#14b8a6","#ec4899","#8b5cf6","#ef4444",
+                 "#eab308","#64748b","#0ea5e9","#22c55e","#a855f7","#f43f5e"];
+const WEEK = ["周日","周一","周二","周三","周四","周五","周六"];
+
+// 每周训练计划：每天一个主题 + 动作清单
+const FIT_WEEK = {
+  1:{name:"推日（胸/肩/三头）", ex:[
+    "杠铃卧推 4组×6-8次",
+    "哑铃上斜卧推 3组×8-10次",
+    "双杠臂屈伸（辅助或退阶） 3组×8-10次",
+    "Y字侧平举 3组×12-15次",
+    "三头绳索下压 3组×10-12次"]},
+  2:{name:"休息", ex:[]},
+  3:{name:"拉日（背/肩后束/二头）", ex:[
+    "辅助引体向上 4组×8-10次（主项）",
+    "高位下拉 3组×10-12次",
+    "坐姿器械划船 3组×10-12次",
+    "面拉 3组×12-15次",
+    "钢线弯举 3组×10-12次"]},
+  4:{name:"休息", ex:[]},
+  5:{name:"腿日（股四/腘绳/臀）", ex:[
+    "高脚杯深蹲 4组×8-10次（先学动作模式）",
+    "保加利亚分腿蹲 3组×8-10次/腿",
+    "罗马尼亚硬拉 3组×8-10次",
+    "腿弯举 3组×12-15次",
+    "站姿提踵 4组×12-15次"]},
+  6:{name:"有氧", ex:["爬坡走 45 分钟"]},
+  0:{name:"有氧", ex:["爬坡走 45 分钟"]}
+};
+
+function defaults(){
+  return {
+    version: VERSION,
+    money: {
+      accounts: { free: 0, locked: 0, pocket: 2000 },
+      dailyBudget: 80,
+      expenses: [],           // {id,date,cat,note,amount}
+      tags: TAGS.map(([name,color])=>({name,color})),   // 常用花费标签，可增删
+      period: "month"
+    },
+    work: { tasks: [] },      // {id,date,text,done}
+    photo: {                  // 摄影学习打卡
+      minutes: 30,            // 每天固定学习时长
+      time: "20:00",          // 建议开始时间
+      plan: [{id:"p1", text:"摄影学习 30 分钟"}],   // 小白先只留一项，想好了再加
+      log: {},                // {"YYYY-MM-DD": ["p1"]}
+      note: {}
+    },
+    fit: {
+      profile: { weight:72, height:177, age:24, bodyFat:25, activity:1.5, goal:"recomp" },
+      week: JSON.parse(JSON.stringify(FIT_WEEK)),
+      log: {},                // {"YYYY-MM-DD": true} 休息日手动打卡
+      ex: {}                  // {"YYYY-MM-DD": [完成的动作序号]}
+    }
+  };
+}
+
+const KEY = "my.workbench.v1";
+let D = load();
+
+function load(){
+  try{
+    const raw = localStorage.getItem(KEY);
+    if(!raw) return defaults();
+    const d = JSON.parse(raw);
+    const base = defaults();
+    const out = {
+      ...base, ...d,
+      money:{...base.money, ...(d.money||{})},
+      work:{...base.work, ...(d.work||{})},
+      photo:{...base.photo, ...(d.photo||{})},
+      fit:{...base.fit, ...(d.fit||{}),
+           profile:{...base.fit.profile, ...((d.fit||{}).profile||{})}}
+    };
+    // 旧版本数据迁移
+    if(!out.money.tags || !out.money.tags.length) out.money.tags = base.money.tags;
+    if(!out.fit.week || typeof out.fit.week[1] === "string" || typeof out.fit.week[1] === "undefined") {
+      out.fit.week = base.fit.week;
+    }
+    delete out.fit.weekPlan;
+    if(!out.fit.ex) out.fit.ex = {};
+    // 旧的学习打卡历史保留成摄影打卡历史（日期仍然有效）
+    if(!d.photo && d.study){
+      out.photo.log = d.study.log || {};
+      out.photo.note = d.study.note || {};
+    }
+    return out;
+  }catch(e){ return defaults(); }
+}
+function save(){ localStorage.setItem(KEY, JSON.stringify(D)); }
+
+/* ------------------------------------------------------------------ 工具 */
+const pad = n => String(n).padStart(2,"0");
+function ymd(d){ return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate()); }
+const TODAY = ymd(new Date());
+function addDays(s, n){ const d=new Date(s+"T00:00:00"); d.setDate(d.getDate()+n); return ymd(d); }
+function weekStart(s){ const d=new Date(s+"T00:00:00"); const w=(d.getDay()+6)%7; d.setDate(d.getDate()-w); return ymd(d); }
+function money(n){ return (Math.round(n*100)/100).toLocaleString("zh-CN",{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function catColor(c){
+  const t=(D.money.tags||[]).find(x=>x.name===c);
+  return t? t.color : "#64748b";
+}
+function esc(s){ return String(s).replace(/[&<>"]/g, m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[m])); }
+function uid(){ return Math.random().toString(36).slice(2,9); }
+
+function donut(items, size=132, thickness=22){
+  const total = items.reduce((s,i)=>s+i.value,0);
+  if(!total) return '<div class="empty" style="width:132px">还没有记录</div>';
+  const r=(size-thickness)/2, cx=size/2, cy=size/2;
+  let a0=-Math.PI/2, out="";
+  for(const it of items){
+    const frac=it.value/total, a1=a0+frac*Math.PI*2;
+    if(frac>=0.9999){
+      out+=`<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${it.color}" stroke-width="${thickness}"/>`;
+    }else{
+      const x0=cx+r*Math.cos(a0), y0=cy+r*Math.sin(a0);
+      const x1=cx+r*Math.cos(a1), y1=cy+r*Math.sin(a1);
+      out+=`<path d="M ${x0.toFixed(2)} ${y0.toFixed(2)} A ${r} ${r} 0 ${(a1-a0)>Math.PI?1:0} 1 ${x1.toFixed(2)} ${y1.toFixed(2)}"
+        fill="none" stroke="${it.color}" stroke-width="${thickness}"/>`;
+    }
+    a0=a1;
+  }
+  return `<svg viewBox="0 0 ${size} ${size}" class="donut">${out}</svg>`;
+}
+
+/* 摄影学习的 30 分钟计时器（不写入 D，切页面不会丢） */
+const TIMER_START = { left:0, running:false, id:null };
+function fmtMMSS(sec){
+  sec = Math.max(0, Math.round(sec));
+  return Math.floor(sec/60) + ":" + pad(sec%60);
+}
+function timerTick(){
+  const el = document.getElementById("tmDisplay");
+  if(el) el.textContent = fmtMMSS(TIMER_START.left);
+  if(TIMER_START.left <= 0){
+    clearInterval(TIMER_START.id);
+    TIMER_START.running = false; TIMER_START.id = null;
+    const all = D.photo.plan.map(p=>p.id);
+    D.photo.log[TODAY] = all;
+    save(); renderAll();
+    alert((D.photo.minutes||30) + " 分钟到了，今天的摄影学习自动打卡完成。");
+  }
+}
+function timerToggle(){
+  if(TIMER_START.running){
+    clearInterval(TIMER_START.id); TIMER_START.running = false; TIMER_START.id = null;
+    renderPhoto(); return;
+  }
+  if(TIMER_START.left <= 0) TIMER_START.left = (D.photo.minutes||30) * 60;
+  TIMER_START.running = true;
+  TIMER_START.id = setInterval(()=>{ TIMER_START.left--; timerTick(); }, 1000);
+  renderPhoto();
+}
+
+/* ------------------------------------------------------------------ 存钱 */
+function expensesIn(period){
+  const ws=weekStart(TODAY), ms=TODAY.slice(0,7);
+  return D.money.expenses.filter(e=>{
+    if(period==="today") return e.date===TODAY;
+    if(period==="week")  return e.date>=ws && e.date<=addDays(ws,6);
+    return e.date.slice(0,7)===ms;
+  });
+}
+let tagManage = false;
+function renderMoney(){
+  const m=D.money, out=expensesIn("today").reduce((s,e)=>s+e.amount,0);
+  const cur=m.currentTag || (m.tags[0] && m.tags[0].name) || "";
+  const monthOut=expensesIn("month").reduce((s,e)=>s+e.amount,0);
+  const pocketLeft=m.accounts.pocket-monthOut;
+  const budgetLeft=m.dailyBudget-out;
+  const pct=Math.min(100, m.dailyBudget? out/m.dailyBudget*100 : 0);
+  const period=m.period||"month";
+  const list=expensesIn(period);
+  const byCat={};
+  list.forEach(e=>byCat[e.cat]=(byCat[e.cat]||0)+e.amount);
+  const items=Object.entries(byCat).sort((a,b)=>b[1]-a[1])
+    .map(([c,v])=>({name:c,value:v,color:catColor(c)}));
+  const total=list.reduce((s,e)=>s+e.amount,0);
+
+  const recent=[...D.money.expenses].sort((a,b)=>b.date.localeCompare(a.date)||0).slice(0,12);
+
+  document.getElementById("tab-money").innerHTML = `
+  <div class="grid2">
+    <div class="stat" style="--accent:var(--money)">
+      <div class="lb">自由支配</div>
+      <div class="val">¥${money(m.accounts.free)}</div>
+      <div class="note">随时能动的钱</div>
+    </div>
+    <div class="stat" style="--accent:#64748b">
+      <div class="lb">不能动</div>
+      <div class="val">¥${money(m.accounts.locked)}</div>
+      <div class="note">应急金 / 定期 / 投资</div>
+    </div>
+    <div class="stat" style="--accent:var(--study)">
+      <div class="lb">本月零花剩余</div>
+      <div class="val">¥${money(pocketLeft)}</div>
+      <div class="note">额度 ¥${money(m.accounts.pocket)} · 已用 ¥${money(monthOut)}</div>
+    </div>
+    <div class="stat" style="--accent:#e05252">
+      <div class="lb">今日已花</div>
+      <div class="val">¥${money(out)}</div>
+      <div class="note">共 ${expensesIn("today").length} 笔</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>今日预算 <span class="sub">${budgetLeft>=0?"还剩 ¥"+money(budgetLeft):"超支 ¥"+money(-budgetLeft)}</span></h3>
+    <div class="bar" style="--accent:${pct>100?"#e05252":"var(--money)"}"><i style="width:${Math.min(pct,100)}%"></i></div>
+    <div class="bar-row"><span>已花 ¥${money(out)}</span><span>预算 ¥${money(m.dailyBudget)}</span></div>
+  </div>
+
+  <div class="card">
+    <h3>支出分类
+      <span class="segs">
+        <button data-period="today" class="${period==="today"?"on":""}">今日</button>
+        <button data-period="week" class="${period==="week"?"on":""}">本周</button>
+        <button data-period="month" class="${period==="month"?"on":""}">本月</button>
+      </span>
+    </h3>
+    <div class="donut-wrap">
+      ${donut(items)}
+      <ul class="legend">
+        ${items.length? items.map(i=>`<li><span class="dot" style="background:${i.color}"></span>
+          <span class="nm">${esc(i.name)}</span>
+          <span class="vv">¥${money(i.value)} · ${Math.round(i.value/total*100)}%</span></li>`).join("")
+          : '<li><span class="nm" style="color:var(--muted)">这段时间还没有支出</span></li>'}
+      </ul>
+    </div>
+    ${total? `<div class="bar-row"><span>合计</span><span>¥${money(total)}</span></div>`:""}
+  </div>
+
+  <div class="card">
+    <h3>快捷记账 <span class="sub">点标签 → 输金额 → 记下</span></h3>
+    <div class="chips" style="margin-bottom:10px">
+      ${m.tags.map(t=>`<button class="chip ${!tagManage && t.name===cur ? "on" : ""}" data-tag="${esc(t.name)}">${esc(t.name)}${tagManage?'<span class="rm"> ×</span>':""}</button>`).join("")}
+      <button class="chip add" id="tagAdd">+ 新标签</button>
+      <button class="chip add" id="tagManage">${tagManage ? "完成" : "管理标签"}</button>
+    </div>
+    <input class="amt-in" id="exAmt" type="number" inputmode="decimal" placeholder="0.00">
+    <div class="row" style="margin-top:9px">
+      <input type="text" id="exNote" placeholder="备注（可不填）">
+      <input type="date" id="exDate" value="${TODAY}" style="flex:0 0 148px">
+    </div>
+    <button class="btn" id="exAdd" style="width:100%;margin-top:9px">记下这笔</button>
+    ${tagManage ? '<div class="hint">点标签上的 × 删掉它；已经记过的账不受影响。</div>' : ""}
+  </div>
+
+  <div class="card">
+    <h3>账户余额 <span class="sub">点数字直接改</span></h3>
+    <div class="row" style="margin-bottom:8px">
+      <label style="flex:1"><span class="lb" style="font-size:12px;color:var(--muted)">自由支配</span>
+        <input type="number" data-acct="free" value="${m.accounts.free}"></label>
+      <label style="flex:1"><span class="lb" style="font-size:12px;color:var(--muted)">不能动</span>
+        <input type="number" data-acct="locked" value="${m.accounts.locked}"></label>
+    </div>
+    <div class="row">
+      <label style="flex:1"><span class="lb" style="font-size:12px;color:var(--muted)">本月零花额度</span>
+        <input type="number" data-acct="pocket" value="${m.accounts.pocket}"></label>
+      <label style="flex:1"><span class="lb" style="font-size:12px;color:var(--muted)">每日预算</span>
+        <input type="number" data-budget value="${m.dailyBudget}"></label>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>最近支出</h3>
+    ${recent.length? `<ul class="list">${recent.map(e=>`
+      <li>
+        <span class="dot" style="width:9px;height:9px;border-radius:3px;background:${catColor(e.cat)}"></span>
+        <span class="li-main">
+          <span class="t">${esc(e.note||e.cat)}</span>
+          <span class="m">${e.date} · ${esc(e.cat)}</span>
+        </span>
+        <span class="amount out">-¥${money(e.amount)}</span>
+        <button class="x" data-del-exp="${e.id}">×</button>
+      </li>`).join("")}</ul>`: '<div class="empty">还没有记录，开始添加第一笔吧</div>'}
+  </div>`;
+}
+
+/* ------------------------------------------------------------------ 工作 */
+function renderWork(){
+  const today=TODAY, future=addDays(TODAY,1), end=addDays(TODAY,30);
+  const t=D.work.tasks.filter(x=>x.date===today);
+  const done=t.filter(x=>x.done).length;
+  const upcoming=D.work.tasks.filter(x=>x.date>=future && x.date<=end)
+    .sort((a,b)=>a.date.localeCompare(b.date));
+  const groups={};
+  upcoming.forEach(x=>(groups[x.date]=groups[x.date]||[]).push(x));
+  const pct=t.length? done/t.length*100 : 0;
+
+  const li = x => `<li>
+      <span class="chk ${x.done?"on":""}" data-toggle-work="${x.id}">${x.done?"✓":""}</span>
+      <span class="li-main"><span class="t ${x.done?"done":""}">${esc(x.text)}</span>
+        ${x.date!==today?`<span class="m">${x.date}</span>`:""}</span>
+      <button class="x" data-del-work="${x.id}">×</button>
+    </li>`;
+
+  document.getElementById("tab-work").innerHTML = `
+  <div class="card">
+    <h3>今日进度 <span class="sub">${done}/${t.length}</span></h3>
+    <div class="bar" style="--accent:var(--work)"><i style="width:${pct}%"></i></div>
+  </div>
+
+  <div class="card">
+    <h3>添加安排</h3>
+    <div class="row" style="margin-bottom:8px">
+      <input type="text" id="wkText" placeholder="要做什么，比如 交对账表">
+    </div>
+    <div class="row">
+      <input type="date" id="wkDate" value="${TODAY}" style="flex:1">
+      <button class="btn" id="wkAdd" style="flex:0 0 auto">+ 添加</button>
+    </div>
+    <div class="hint">选今天的日期就是今天的任务，选以后的日期会出现在「未来安排」。</div>
+  </div>
+
+  <div class="card">
+    <h3>今天</h3>
+    ${t.length? `<ul class="list">${t.map(li).join("")}</ul>` : '<div class="empty">今天还没有安排</div>'}
+  </div>
+
+  <div class="card">
+    <h3>未来安排 <span class="sub">未来 30 天</span></h3>
+    ${Object.keys(groups).length? Object.entries(groups).map(([d,arr])=>`
+      <div style="margin-top:6px">
+        <div class="pill">${d}</div>
+        <ul class="list">${arr.map(li).join("")}</ul>
+      </div>`).join("") : '<div class="empty">还没有未来的安排</div>'}
+  </div>`;
+}
+
+/* ------------------------------------------------------------------ 摄影学习 */
+function renderPhoto(){
+  const s=D.photo, plan=s.plan, done=(s.log[TODAY]||[]);
+  const doneCount=plan.filter(p=>done.includes(p.id)).length;
+  const pct=plan.length? doneCount/plan.length*100 : 0;
+
+  // 连续打卡：当天全部完成才算打卡
+  let streak=0;
+  for(let i=0;i<365;i++){
+    const d=addDays(TODAY,-i);
+    const dd=s.log[d]||[];
+    const ok=plan.length && plan.every(p=>dd.includes(p.id));
+    if(ok) streak++;
+    else if(i>0) break;
+  }
+  const ws=weekStart(TODAY);
+  const week=[...Array(7)].map((_,i)=>addDays(ws,i));
+
+  document.getElementById("tab-photo").innerHTML = `
+  <div class="grid2">
+    <div class="stat" style="--accent:var(--study)">
+      <div class="lb">连续打卡</div>
+      <div class="val">${streak}<small>天</small></div>
+      <div class="note">当天计划全部完成才算</div>
+    </div>
+    <div class="stat" style="--accent:var(--study)">
+      <div class="lb">今日完成</div>
+      <div class="val">${doneCount}<small>/${plan.length}</small></div>
+      <div class="note">摄影 · 每天固定 ${s.minutes||30} 分钟</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>今晚的 ${s.minutes||30} 分钟 <span class="sub">固定时段 ${esc(s.time||"20:00")}</span></h3>
+    <div class="timer-box">
+      <div class="tm" id="tmDisplay">${fmtMMSS(TIMER_START.left>0 ? TIMER_START.left : (s.minutes||30)*60)}</div>
+      <button class="btn" id="tmBtn" style="--accent:var(--study)">${TIMER_START.running ? "暂停" : "开始计时"}</button>
+      <button class="btn ghost mini" id="tmReset">重置</button>
+    </div>
+    <div class="row">
+      <label style="flex:1"><span class="hint">每天开始时间</span>
+        <input type="time" id="phTime" value="${esc(s.time||"20:00")}"></label>
+      <label style="flex:1"><span class="hint">每天分钟数</span>
+        <input type="number" id="phMin" value="${s.minutes||30}"></label>
+    </div>
+    <div class="hint">计时结束会自动打卡；不想用计时器，直接勾下面的清单也算完成。</div>
+  </div>
+
+  <div class="card">
+    <h3>今日打卡 <span class="sub">${Math.round(pct)}%</span></h3>
+    <div class="bar" style="--accent:var(--study)"><i style="width:${pct}%"></i></div>
+    <ul class="list" style="margin-top:8px">
+      ${plan.map(p=>`<li>
+        <span class="chk ${done.includes(p.id)?"on":""}" data-toggle-plan="${p.id}">${done.includes(p.id)?"✓":""}</span>
+        <span class="li-main"><span class="t ${done.includes(p.id)?"done":""}">${esc(p.text)}</span></span>
+        <button class="x" data-del-plan="${p.id}">×</button>
+      </li>`).join("") || '<div class="empty">还没有计划项</div>'}
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3>本周打卡</h3>
+    <div class="day-grid">
+      ${week.map(d=>{
+        const dd=s.log[d]||[];
+        const all=plan.length && plan.every(p=>dd.includes(p.id));
+        const some=dd.length>0;
+        const cls = all? "done" : (some? "part" : "");
+        return `<div class="day-cell ${cls} ${d===TODAY?"today":""}">
+          <b>${WEEK[new Date(d+"T00:00:00").getDay()].slice(1)}</b>
+          ${all? "✓" : (some? Math.round(dd.length/plan.length*100)+"%" : "—")}
+        </div>`;
+      }).join("")}
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>添加计划项</h3>
+    <div class="row">
+      <input type="text" id="stText" placeholder="比如 看一节教程 / 练构图 / 修图">
+      <button class="btn" id="stAdd" style="--accent:var(--study)">+ 添加</button>
+    </div>
+    <div class="hint">计划项每天都会出现，勾上就算当天完成；不要的可以点 × 删掉。</div>
+  </div>
+
+  <div class="card">
+    <h3>今日笔记</h3>
+    <textarea id="stNote" placeholder="今天学了什么，记一句">${esc(s.note[TODAY]||"")}</textarea>
+  </div>`;
+}
+
+/* ------------------------------------------------------------------ 健身 */
+function renderFit(){
+  const f=D.fit, p=f.profile;
+  // Mifflin-St Jeor（男）
+  const bmr = 10*p.weight + 6.25*p.height - 5*p.age + 5;
+  const tdee = bmr * p.activity;
+  const lbm = p.weight * (1 - p.bodyFat/100);
+  const bmi = p.weight / Math.pow(p.height/100,2);
+  const target = p.goal==="recomp" ? 0.90 : p.goal==="cut" ? 0.82 : 1.10;
+  const intake = tdee * target;
+  const protein = [Math.round(lbm*2.0), Math.round(lbm*2.4)];
+  const fat = [Math.round(p.weight*0.8), Math.round(p.weight*1.0)];
+  const carbs = Math.round((intake - protein[1]*4 - fat[0]*9)/4);
+  const bf18 = lbm/(1-0.18);
+  const dow=new Date(TODAY+"T00:00:00").getDay();
+  const day = f.week[dow] || {name:"休息", ex:[]};
+  const doneIdx = f.ex[TODAY] || [];
+  const isRest = !day.ex.length;
+  const fitDone = isRest ? !!f.log[TODAY] : day.ex.every((_,i)=>doneIdx.includes(i));
+  const ws=weekStart(TODAY), week=[...Array(7)].map((_,i)=>addDays(ws,i));
+  const splitEx = line => {
+    const m = /^(.*?)\s*(\d+组.*|\d+\s*分钟.*)$/.exec(line);
+    return m ? {nm:m[1], st:m[2]} : {nm:line, st:""};
+  };
+  const doneOn = d => {
+    const dd = f.week[new Date(d+"T00:00:00").getDay()] || {ex:[]};
+    if(!dd.ex.length) return !!f.log[d];
+    const idx = f.ex[d] || [];
+    return dd.ex.every((_,i)=>idx.includes(i));
+  };
+
+  document.getElementById("tab-fit").innerHTML = `
+  <div class="card" style="--accent:var(--fit)">
+    <h3>今天练什么 <span class="sub">${WEEK[dow]}</span></h3>
+    <div class="big" style="color:var(--fit)">${esc(day.name)}</div>
+    ${day.ex.length? `<ul class="list" style="margin-top:4px">
+      ${day.ex.map((line,i)=>{
+        const s=splitEx(line);
+        return `<li>
+          <span class="chk ${doneIdx.includes(i)?"on":""}" data-toggle-ex="${i}">${doneIdx.includes(i)?"✓":""}</span>
+          <span class="li-main"><span class="t ${doneIdx.includes(i)?"done":""}">${esc(s.nm)}</span>
+            ${s.st?`<span class="m">${esc(s.st)}</span>`:""}</span>
+        </li>`;
+      }).join("")}
+    </ul>` : '<div class="hint">休息日，睡够、吃够蛋白就行。</div>'}
+    <button class="btn" id="fitToggle" style="--accent:var(--fit);width:100%;margin-top:12px">
+      ${fitDone? "✓ 今天已完成（点一下取消）" : (isRest? "标记今天休息" : "全部完成，打卡")}
+    </button>
+    ${(!isRest && !fitDone)? '<div class="hint">上面动作全部勾完会自动算作打卡。</div>' : ""}
+  </div>
+
+  <div class="card">
+    <h3>今日建议 <span class="sub">按你的身体数据估算</span></h3>
+    <div class="kv"><span>建议热量摄入</span><b>${Math.round(intake)} 千卡</b></div>
+    <div class="kv"><span>基础代谢 BMR</span><b>${Math.round(bmr)} 千卡</b></div>
+    <div class="kv"><span>日常消耗 TDEE</span><b>${Math.round(tdee)} 千卡</b></div>
+    <div class="kv"><span>蛋白质</span><b>${protein[0]}–${protein[1]} g</b></div>
+    <div class="kv"><span>脂肪</span><b>${fat[0]}–${fat[1]} g</b></div>
+    <div class="kv"><span>碳水（按上限蛋白质算）</span><b>约 ${carbs} g</b></div>
+    <div class="hint">
+      按男 72kg / 177cm / 24 岁 / 体脂 25% / 活动系数 ${p.activity} 估算。
+      去脂体重 ${lbm.toFixed(1)}kg，BMI ${bmi.toFixed(1)}。
+      目标是增肌减脂，所以取 TDEE 的 ${Math.round(target*100)}% 作小缺口，
+      每周掉 0.2–0.35kg 比较稳。若保持肌肉不变、把体脂降到 18%，体重约 ${bf18.toFixed(1)}kg。
+      这些是估算值，不是医嘱。
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>本周训练打卡</h3>
+    <div class="day-grid">
+      ${week.map(d=>`
+        <div class="day-cell ${doneOn(d)?"done":""} ${d===TODAY?"today":""}">
+          <b>${WEEK[new Date(d+"T00:00:00").getDay()].slice(1)}</b>
+          ${doneOn(d)? "✓" : "—"}
+        </div>`).join("")}
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>每周计划 <span class="sub">标题、动作、组次都能改</span></h3>
+    ${[1,2,3,4,5,6,0].map(i=>{
+      const d=f.week[i] || {name:"", ex:[]};
+      return `<div class="plan-day ${i===dow?"today":""}">
+        <div class="hd"><b>${WEEK[i]}</b>
+          <input type="text" data-daytitle="${i}" value="${esc(d.name)}"></div>
+        ${d.ex.map((line,j)=>`<div class="exline">
+          <input type="text" data-ex="${i}-${j}" value="${esc(line)}">
+          <button class="x" data-exdel="${i}-${j}">×</button>
+        </div>`).join("")}
+        <button class="btn ghost mini" data-exadd="${i}" style="margin-top:7px">+ 加动作</button>
+      </div>`;
+    }).join("")}
+    <div class="hint">不加动作就是休息日。动作里写「4组×6-8次」这类格式，首页会自动拆成名称和组次显示。</div>
+  </div>
+
+  <div class="card">
+    <h3>身体数据</h3>
+    <div class="row" style="margin-bottom:8px">
+      <label style="flex:1"><span class="hint">体重 kg</span><input type="number" data-fit="weight" value="${p.weight}"></label>
+      <label style="flex:1"><span class="hint">身高 cm</span><input type="number" data-fit="height" value="${p.height}"></label>
+    </div>
+    <div class="row" style="margin-bottom:8px">
+      <label style="flex:1"><span class="hint">年龄</span><input type="number" data-fit="age" value="${p.age}"></label>
+      <label style="flex:1"><span class="hint">体脂率 %</span><input type="number" data-fit="bodyFat" value="${p.bodyFat}"></label>
+    </div>
+    <div class="row">
+      <label style="flex:1"><span class="hint">活动系数</span>
+        <select data-fit="activity">
+          ${[[1.2,"1.2 久坐"],[1.375,"1.375 轻度"],[1.5,"1.5 中等"],[1.725,"1.725 高强度"]]
+            .map(([v,t])=>`<option value="${v}" ${p.activity==v?"selected":""}>${t}</option>`).join("")}
+        </select></label>
+      <label style="flex:1"><span class="hint">目标</span>
+        <select data-fit="goal">
+          <option value="recomp" ${p.goal==="recomp"?"selected":""}>增肌减脂</option>
+          <option value="cut" ${p.goal==="cut"?"selected":""}>减脂为主</option>
+          <option value="bulk" ${p.goal==="bulk"?"selected":""}>增肌为主</option>
+        </select></label>
+    </div>
+  </div>`;
+}
+
+/* ------------------------------------------------------------------ 概览 */
+function renderSummary(){
+  const t=D.work.tasks.filter(x=>x.date===TODAY);
+  const tDone=t.filter(x=>x.done).length;
+  const plan=D.photo.plan, sDone=(D.photo.log[TODAY]||[]).length;
+  const spent=expensesIn("today").reduce((s,e)=>s+e.amount,0);
+  const dow=new Date(TODAY+"T00:00:00").getDay();
+  const day=D.fit.week[dow] || {ex:[]};
+  const exDone=(D.fit.ex[TODAY]||[]).filter(i=>day.ex[i]!==undefined).length;
+  const fitLabel = day.ex.length ? `${exDone}/${day.ex.length}` : (D.fit.log[TODAY]? "✓" : "—");
+  document.getElementById("summary").innerHTML = `
+    <div class="s"><b>${tDone}/${t.length}</b><span>今日任务</span></div>
+    <div class="s"><b>${sDone}/${plan.length}</b><span>摄影打卡</span></div>
+    <div class="s"><b>${fitLabel}</b><span>今日训练</span></div>
+    <div class="s"><b>¥${money(spent)}</b><span>今日花费</span></div>`;
+}
+
+function renderDate(){
+  const d=new Date();
+  document.getElementById("hDate").textContent =
+    `${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日 · ${WEEK[d.getDay()]}`;
+}
+
+function renderAll(){ renderDate(); renderSummary(); renderMoney(); renderWork(); renderPhoto(); renderFit(); }
+
+/* ------------------------------------------------------------------ 交互 */
+const TABS=["money","work","photo","fit"];
+TAB_ALIAS={study:"photo"};
+function showTab(name){
+  if(TAB_ALIAS[name]) name=TAB_ALIAS[name];
+  if(!TABS.includes(name)) name="money";
+  document.querySelectorAll("nav.tabbar button").forEach(x=>x.classList.toggle("on", x.dataset.tab===name));
+  document.querySelectorAll(".tab").forEach(s=>s.classList.toggle("on", s.id==="tab-"+name));
+  if(location.hash.slice(1)!==name) history.replaceState(null,"","#"+name);
+  window.scrollTo(0,0);
+}
+document.getElementById("tabbar").addEventListener("click", e=>{
+  const b=e.target.closest("button[data-tab]"); if(!b) return;
+  showTab(b.dataset.tab);
+});
+
+document.body.addEventListener("click", e=>{
+  const t=e.target;
+
+  const period=t.closest("[data-period]");
+  if(period){ D.money.period=period.dataset.period; save(); renderMoney(); return; }
+
+  if(t.id==="exAdd"){
+    const amt=parseFloat(document.getElementById("exAmt").value);
+    if(!(amt>0)) return alert("先填金额");
+    const cat=D.money.currentTag || (D.money.tags[0]&&D.money.tags[0].name) || "其他";
+    D.money.expenses.push({ id:uid(), date:document.getElementById("exDate").value||TODAY,
+      cat, note:document.getElementById("exNote").value.trim(), amount:amt });
+    save(); renderAll();
+    const again=document.getElementById("exAmt"); if(again) again.focus();
+    return;
+  }
+  const chip=t.closest("[data-tag]");
+  if(chip){
+    const name=chip.dataset.tag;
+    if(tagManage){
+      if(confirm("删除标签「"+name+"」？已经记过的账不受影响。")){
+        D.money.tags=D.money.tags.filter(x=>x.name!==name);
+        if(D.money.currentTag===name) D.money.currentTag=(D.money.tags[0]||{}).name;
+        save(); renderAll();
+      }
+    }else{ D.money.currentTag=name; save(); renderMoney(); }
+    return;
+  }
+  if(t.id==="tagAdd"){
+    const v=(prompt("新标签名字，比如 房租、话费、宠物")||"").trim();
+    if(!v) return;
+    if(D.money.tags.some(x=>x.name===v)) return alert("这个标签已经有了");
+    const used=new Set(D.money.tags.map(x=>x.color));
+    const color=PALETTE.find(c=>!used.has(c)) || PALETTE[D.money.tags.length % PALETTE.length];
+    D.money.tags.push({name:v,color}); D.money.currentTag=v; save(); renderAll(); return;
+  }
+  if(t.id==="tagManage"){ tagManage=!tagManage; renderMoney(); return; }
+  const dele=t.closest("[data-del-exp]");
+  if(dele){ D.money.expenses=D.money.expenses.filter(x=>x.id!==dele.dataset.delExp); save(); renderAll(); return; }
+
+  if(t.id==="wkAdd"){
+    const v=document.getElementById("wkText").value.trim(); if(!v) return;
+    D.work.tasks.push({ id:uid(), date:document.getElementById("wkDate").value||TODAY, text:v, done:false });
+    save(); renderAll(); return;
+  }
+  const tw=t.closest("[data-toggle-work]");
+  if(tw){ const x=D.work.tasks.find(a=>a.id===tw.dataset.toggleWork); x.done=!x.done; save(); renderAll(); return; }
+  const dw=t.closest("[data-del-work]");
+  if(dw){ D.work.tasks=D.work.tasks.filter(a=>a.id!==dw.dataset.delWork); save(); renderAll(); return; }
+
+  const tp=t.closest("[data-toggle-plan]");
+  if(tp){
+    const id=tp.dataset.togglePlan, cur=D.photo.log[TODAY]||[];
+    D.photo.log[TODAY]= cur.includes(id)? cur.filter(x=>x!==id) : [...cur,id];
+    save(); renderAll(); return;
+  }
+  const dp=t.closest("[data-del-plan]");
+  if(dp){ D.photo.plan=D.photo.plan.filter(p=>p.id!==dp.dataset.delPlan); save(); renderAll(); return; }
+  if(t.id==="stAdd"){
+    const v=document.getElementById("stText").value.trim(); if(!v) return;
+    D.photo.plan.push({ id:uid(), text:v }); save(); renderAll(); return;
+  }
+
+  if(t.id==="tmBtn"){ timerToggle(); return; }
+  if(t.id==="tmReset"){ if(TIMER_START.id) clearInterval(TIMER_START.id); TIMER_START.running=false;
+    TIMER_START.id=null; TIMER_START.left=0; renderPhoto(); return; }
+
+  const te=t.closest("[data-toggle-ex]");
+  if(te){
+    const i=+te.dataset.toggleEx, cur=D.fit.ex[TODAY]||[];
+    D.fit.ex[TODAY]= cur.includes(i)? cur.filter(x=>x!==i) : [...cur,i].sort((a,b)=>a-b);
+    save(); renderAll(); return;
+  }
+  if(t.dataset.exadd!==undefined && t.dataset.exadd!==""){
+    const d=t.dataset.exadd;
+    D.fit.week[d].ex = D.fit.week[d].ex || [];
+    D.fit.week[d].ex.push("新动作 3组×10次");
+    save(); renderFit(); return;
+  }
+  if(t.dataset.exdel){
+    const [d,i]=t.dataset.exdel.split("-");
+    D.fit.week[d].ex.splice(+i,1);
+    save(); renderFit(); return;
+  }
+  if(t.id==="fitToggle"){
+    const dow=new Date(TODAY+"T00:00:00").getDay();
+    const day=D.fit.week[dow] || {ex:[]};
+    if(!day.ex.length){
+      D.fit.log[TODAY]=!D.fit.log[TODAY];
+    }else{
+      const cur=D.fit.ex[TODAY]||[];
+      D.fit.ex[TODAY] = day.ex.every((_,i)=>cur.includes(i)) ? [] : day.ex.map((_,i)=>i);
+    }
+    save(); renderAll(); return;
+  }
+});
+
+document.body.addEventListener("change", e=>{
+  const t=e.target;
+  if(t.dataset.acct){ D.money.accounts[t.dataset.acct]=parseFloat(t.value)||0; save(); renderAll(); return; }
+  if(t.hasAttribute("data-budget")){ D.money.dailyBudget=parseFloat(t.value)||0; save(); renderAll(); return; }
+  if(t.id==="phTime"){ D.photo.time=t.value; save(); return; }
+  if(t.id==="phMin"){ D.photo.minutes=Math.max(1,parseFloat(t.value)||30); TIMER_START.left=0; save(); renderPhoto(); return; }
+  if(t.dataset.daytitle!==undefined && t.dataset.daytitle!==""){ D.fit.week[t.dataset.daytitle].name=t.value; save(); renderFit(); return; }
+  if(t.dataset.ex){ const [d,i]=t.dataset.ex.split("-"); D.fit.week[d].ex[+i]=t.value; save(); renderFit(); return; }
+  if(t.dataset.fit){ D.fit.profile[t.dataset.fit]= t.dataset.fit==="goal"? t.value : (parseFloat(t.value)||0); save(); renderFit(); return; }
+});
+document.body.addEventListener("input", e=>{
+  if(e.target.id==="stNote"){ D.photo.note[TODAY]=e.target.value; save(); }
+});
+
+/* 设置面板 */
+const mask=document.getElementById("mask");
+document.getElementById("btnSet").onclick=()=>mask.classList.add("on");
+document.getElementById("btnClose").onclick=()=>mask.classList.remove("on");
+mask.addEventListener("click", e=>{ if(e.target===mask) mask.classList.remove("on"); });
+document.getElementById("btnExport").onclick=()=>{
+  const blob=new Blob([JSON.stringify(D,null,2)],{type:"application/json"});
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(blob); a.download="工作台备份-"+TODAY+".json"; a.click();
+};
+document.getElementById("btnImport").onclick=()=>document.getElementById("fileIn").click();
+document.getElementById("fileIn").onchange=e=>{
+  const f=e.target.files[0]; if(!f) return;
+  const r=new FileReader();
+  r.onload=()=>{ try{ const d=JSON.parse(r.result); localStorage.setItem(KEY,JSON.stringify(d)); D=load(); renderAll(); alert("导入成功"); }
+                 catch(err){ alert("文件读不出来："+err.message); } };
+  r.readAsText(f);
+};
+document.getElementById("btnDemo").onclick=()=>{
+  if(!confirm("会覆盖现在的数据，继续？")) return;
+  const d=defaults();
+  d.money.accounts={free:8000,locked:52000,pocket:2000};
+  d.money.expenses=[
+    {id:uid(),date:TODAY,cat:"吃饭",note:"午饭拉面",amount:28},
+    {id:uid(),date:TODAY,cat:"交通",note:"打车",amount:16.5},
+    {id:uid(),date:addDays(TODAY,-1),cat:"吃饭",note:"晚饭",amount:45},
+    {id:uid(),date:addDays(TODAY,-1),cat:"购物",note:"日用品",amount:129},
+    {id:uid(),date:addDays(TODAY,-3),cat:"娱乐",note:"电影",amount:60},
+    {id:uid(),date:addDays(TODAY,-4),cat:"生活",note:"理发",amount:45}
+  ];
+  d.work.tasks=[
+    {id:uid(),date:TODAY,text:"上午十点前提交对账表",done:false},
+    {id:uid(),date:TODAY,text:"下午两点部门例会",done:true},
+    {id:uid(),date:addDays(TODAY,2),text:"季度学习报告",done:false}
+  ];
+  d.photo.log[TODAY]=["p1"];
+  d.fit.ex[addDays(TODAY,-2)]=[0,1,2,3,4];
+  d.fit.ex[addDays(TODAY,-4)]=[0,1,2,3,4];
+  d.fit.log[addDays(TODAY,-6)]=true;
+  localStorage.setItem(KEY,JSON.stringify(d)); D=load(); renderAll(); mask.classList.remove("on");
+};
+document.getElementById("btnReset").onclick=()=>{
+  if(!confirm("清空全部数据，无法撤销。确定？")) return;
+  localStorage.removeItem(KEY); D=defaults(); renderAll(); mask.classList.remove("on");
+};
+
+renderAll();
+showTab(location.hash.slice(1) || "money");
+
+/* 离线可用：注册 Service Worker（本地 file:// 打开时自动跳过） */
+if ("serviceWorker" in navigator && location.protocol.indexOf("http") === 0) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("sw.js").catch(() => {});
+  });
+}
+</script>
+</body>
+</html>

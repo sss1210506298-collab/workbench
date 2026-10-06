@@ -1,0 +1,16 @@
+{
+  "name": "我的工作台",
+  "short_name": "工作台",
+  "description": "存钱、工作、学习、健身，一个页面管一天",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f4f5f7",
+  "theme_color": "#f4f5f7",
+  "lang": "zh-CN",
+  "icons": [
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
