@@ -28,6 +28,7 @@ body[data-mod="money"]{--bg:#edf3f9;--tint:#e0eaf5;--accent:#3f6f9f;--accent-sof
 body[data-mod="work"] {--bg:#f7f1e9;--tint:#efe4d5;--accent:#8b6b4a;--accent-soft:#f0e5d7}
 body[data-mod="photo"]{--bg:#f3f1f9;--tint:#e7e2f3;--accent:#6f5d9c;--accent-soft:#e9e4f5}
 body[data-mod="fit"]  {--bg:#eef4ee;--tint:#e1ece3;--accent:#4d7a58;--accent-soft:#e2ede4}
+body[data-mod="exam"] {--bg:#fbf5e3;--tint:#f6ecce;--accent:#9c7a2b;--accent-soft:#f4e8c6}
 
 .app{max-width:480px;margin:0 auto;padding:0 14px 96px}
 
@@ -188,6 +189,7 @@ nav.tabbar button.on i{filter:none;opacity:1}
     <section class="tab" id="tab-work"></section>
     <section class="tab" id="tab-photo"></section>
     <section class="tab" id="tab-fit"></section>
+    <section class="tab" id="tab-exam"></section>
   </main>
 </div>
 
@@ -196,6 +198,7 @@ nav.tabbar button.on i{filter:none;opacity:1}
   <button data-tab="work"><i>📋</i>工作</button>
   <button data-tab="photo"><i>📷</i>摄影</button>
   <button data-tab="fit"><i>💪</i>健身</button>
+  <button data-tab="exam"><i>📖</i>备考</button>
 </nav>
 
 <div class="mask" id="mask">
@@ -271,6 +274,26 @@ function defaults(){
       profile:{weight:72, height:177, age:24, bodyFat:25, activity:1.5, goal:"recomp"},
       week:JSON.parse(JSON.stringify(FIT_WEEK_DEFAULT)),
       log:{}, ex:{}
+    },
+    exam:{
+      exams:[
+        {id:"x1", name:"浙江省事业单位统考（瑞安）", date:"2027-05-15"},
+        {id:"x2", name:"国考（2028年度）", date:"2027-11-28"},
+        {id:"x3", name:"浙江省考", date:"2027-12-20"}
+      ],
+      template:["资料分析 25 分钟","判断推理 25 分钟","言语 10 题"],
+      tasks:{},
+      phases:[
+        {id:"p1", name:"打地基", from:"2026-10-18", to:"2027-03-31",
+         goal:"资料分析正确率 85%，判断推理 75%"},
+        {id:"p2", name:"事业单位冲刺", from:"2027-04-01", to:"2027-05-20",
+         goal:"职测套题 + 综应 A 类专项（案例分析、公文写作）"},
+        {id:"p3", name:"国考强化", from:"2027-06-01", to:"2027-10-31",
+         goal:"行测全模块 + 申论系统学"},
+        {id:"p4", name:"国考省考冲刺", from:"2027-11-01", to:"2027-12-31",
+         goal:"每周 2 套模考 + 申论大作文每周 1 篇"}
+      ],
+      notes:{}
     }
   };
 }
@@ -288,7 +311,8 @@ function load(){
       money:{...base.money, ...(d.money||{})},
       work:{...base.work, ...(d.work||{})},
       photo:{...base.photo, ...(d.photo||{})},
-      fit:{...base.fit, ...(d.fit||{}), profile:{...base.fit.profile, ...((d.fit||{}).profile||{})}}
+      fit:{...base.fit, ...(d.fit||{}), profile:{...base.fit.profile, ...((d.fit||{}).profile||{})}},
+      exam:{...base.exam, ...(d.exam||{})}
     };
     if(!out.money.tags || !out.money.tags.length) out.money.tags = base.money.tags;
     out.money.tags = out.money.tags.map(t=>{
@@ -304,6 +328,11 @@ function load(){
     }
     delete out.fit.weekPlan;
     if(!out.fit.ex) out.fit.ex = {};
+    out.exam.tasks = (d.exam||{}).tasks || {};
+    out.exam.phases = (d.exam||{}).phases || base.exam.phases;
+    out.exam.exams = (d.exam||{}).exams || base.exam.exams;
+    out.exam.template = (d.exam||{}).template || base.exam.template;
+    out.exam.notes = (d.exam||{}).notes || {};
     if(!d.photo && d.study){ out.photo.log = d.study.log||{}; out.photo.note = d.study.note||{}; }
     return out;
   }catch(e){ return defaults(); }
@@ -395,7 +424,8 @@ const SUBS = {
   money:[["overview","概览"],["ledger","记账"],["invest","理财"]],
   work:[["today","今天"],["plan","计划"],["new","新建"]],
   photo:[["today","今日"],["log","记录"],["plan","计划"]],
-  fit:[["today","今日"],["week","周计划"],["data","数据"]]
+  fit:[["today","今日"],["week","周计划"],["data","数据"]],
+  exam:[["today","今日"],["plan","计划"],["record","记录"]]
 };
 
 /* ---- 存钱：概览 ---- */
@@ -862,15 +892,138 @@ function fitDataPage(){
 }
 
 /* ==================================================================
-   7. 路由与渲染
+   7. 备考
 ================================================================== */
-const MODS=["money","work","photo","fit"];
-const TITLES={money:"我的工作台", work:"工作", photo:"摄影学习", fit:"健身"};
+function ensureExamToday(){
+  const e=D.exam;
+  if(!e.tasks) e.tasks={};
+  if(!e.tasks[TODAY]){
+    e.tasks[TODAY]=(e.template||[]).map(t=>({id:uid(), text:t, done:false}));
+    save();
+  }
+  return e.tasks[TODAY];
+}
+function examToday(){
+  const e=D.exam, list=ensureExamToday();
+  const done=list.filter(x=>x.done).length;
+  const pct=list.length? done/list.length*100:0;
+  const upcoming=[...(e.exams||[])].sort((a,b)=>a.date.localeCompare(b.date));
+  const next=upcoming.find(x=>daysUntil(x.date)>=0) || upcoming[upcoming.length-1] || null;
+  const phase=(e.phases||[]).find(p=>TODAY>=p.from && TODAY<=p.to);
+  return `
+  <div class="card">
+    <h3>${next? "距 "+esc(next.name) : "考试倒计时"} <span class="sub">${next? next.date : ""}</span></h3>
+    ${next? `<div class="big">${Math.max(0,daysUntil(next.date))} 天</div>` : ""}
+    <div class="hint">${phase? "当前阶段：" + esc(phase.name) + " — " + esc(phase.goal)
+      : "当前不在任何阶段内，去「计划」调一下日期"}</div>
+    <div style="margin-top:10px">
+      ${upcoming.map(x=>{
+        const d=daysUntil(x.date);
+        return `<div class="kv"><span>${esc(x.name)}</span><b>${d>=0? d+" 天" : "已过"}</b></div>`;
+      }).join("")}
+    </div>
+  </div>
+  <div class="card">
+    <h3>今日三件 <span class="sub">${done}/${list.length}</span></h3>
+    <div class="bar"><i style="width:${pct}%"></i></div>
+    <ul class="list" style="margin-top:8px">
+      ${list.map(x=>`<li>
+        <span class="chk ${x.done?"on":""}" data-toggle-exam="${x.id}">${x.done?"✓":""}</span>
+        <span class="li-main"><span class="t ${x.done?"done":""}">${esc(x.text)}</span></span>
+        <button class="x" data-del-exam="${x.id}">×</button></li>`).join("")
+        || '<div class="empty">今天还没有任务，去「计划」设置每日模板</div>'}
+    </ul>
+    <div class="row" style="margin-top:10px">
+      <input type="text" id="examAdd" placeholder="临时加一条，比如 资料分析 1 篇">
+      <button class="btn" id="examAddBtn">+ 加</button>
+    </div>
+  </div>`;
+}
+function examPlan(){
+  const e=D.exam;
+  return `
+  <div class="card">
+    <h3>阶段路线 <span class="sub">日期和目标都能改</span></h3>
+    ${(e.phases||[]).map(p=>`<div class="plan-day ${TODAY>=p.from && TODAY<=p.to?"today":""}">
+      <div class="hd"><input type="text" data-phase-name="${p.id}" value="${esc(p.name)}"></div>
+      <div class="row" style="margin-top:7px">
+        <input type="date" data-phase-from="${p.id}" value="${p.from}" style="flex:1">
+        <input type="date" data-phase-to="${p.id}" value="${p.to}" style="flex:1">
+      </div>
+      <input type="text" data-phase-goal="${p.id}" value="${esc(p.goal)}"
+        style="margin-top:7px;font-size:13px">
+    </div>`).join("")}
+  </div>
+  <div class="card">
+    <h3>每日模板 <span class="sub">每天自动生成这几条</span></h3>
+    <ul class="list">
+      ${(e.template||[]).map((t,i)=>`<li><span class="li-main"><span class="t">${esc(t)}</span></span>
+        <button class="x" data-del-tpl="${i}">×</button></li>`).join("")
+        || '<div class="empty">还没有模板</div>'}
+    </ul>
+    <div class="row" style="margin-top:10px">
+      <input type="text" id="tplAdd" placeholder="比如 资料分析 25 分钟">
+      <button class="btn" id="tplAddBtn">+ 加</button>
+    </div>
+    <div class="hint">模板改完只影响以后新建的日子，今天的清单不会变。</div>
+  </div>
+  <div class="card">
+    <h3>考试日期 <span class="sub">参考日期，按公告改</span></h3>
+    ${(e.exams||[]).map(x=>`<div class="row" style="margin-bottom:8px">
+      <input type="text" data-exam-name="${x.id}" value="${esc(x.name)}" style="flex:1.6">
+      <input type="date" data-exam-date="${x.id}" value="${x.date}" style="flex:1.15">
+    </div>`).join("")}
+    <div class="hint">日期只是参考，报名前以官方公告为准。改了倒计时会跟着变。</div>
+  </div>`;
+}
+function examRecord(){
+  const e=D.exam, t=e.tasks||{};
+  let streak=0;
+  for(let i=0;i<365;i++){
+    const d=addDays(TODAY,-i), l=t[d]||[];
+    const ok=l.length>0 && l.every(x=>x.done);
+    if(ok) streak++; else if(i>0) break;
+  }
+  const totalDays=Object.keys(t).filter(k=>(t[k]||[]).some(x=>x.done)).length;
+  const rows=[...Array(14)].map((_,i)=>addDays(TODAY,-i)).map(d=>{
+    const l=t[d]||[], n=l.filter(x=>x.done).length;
+    const full=l.length>0 && n===l.length;
+    return `<li><span class="li-main"><span class="t">${d}${d===TODAY?"（今天）":""}</span></span>
+      <span class="amount" style="color:${full?"var(--accent)":"var(--muted)"}">
+        ${l.length? (full? "完成" : `${n}/${l.length}`) : "没学"}</span></li>`;
+  }).join("");
+  return `
+  <div class="grid2">
+    <div class="stat"><div class="lb">连续打卡</div><div class="val">${streak}<small>天</small></div>
+      <div class="note">当天任务全部完成才算</div></div>
+    <div class="stat"><div class="lb">累计学习</div><div class="val">${totalDays}<small>天</small></div>
+      <div class="note">至少完成一项</div></div>
+  </div>
+  <div class="card">
+    <h3>本周</h3>
+    ${weekGrid(d=>{ const l=t[d]||[]; return l.length>0 && l.every(x=>x.done); })}
+  </div>
+  <div class="card">
+    <h3>近 14 天</h3>
+    <ul class="list">${rows}</ul>
+  </div>
+  <div class="card">
+    <h3>今日笔记</h3>
+    <textarea id="examNote" placeholder="今天错在哪、明天注意什么">${esc(e.notes[TODAY]||"")}</textarea>
+  </div>`;
+}
+
+/* ==================================================================
+   8. 路由与渲染
+================================================================== */
+const MODS=["money","work","photo","fit","exam"];
+const TITLES={money:"我的工作台", work:"工作", photo:"摄影学习", fit:"健身", exam:"备考"};
 const PAGES={
   money:{overview:moneyOverview, ledger:moneyLedger, invest:moneyInvest},
   work:{today:workToday, plan:workPlan, new:workNew},
   photo:{today:photoToday, log:photoLog, plan:photoPlan},
-  fit:{today:fitToday, week:fitWeekPage, data:fitDataPage}
+  fit:{today:fitToday, week:fitWeekPage, data:fitDataPage},
+  exam:{today:examToday, plan:examPlan, record:examRecord}
 };
 let MOD="money";
 
@@ -907,10 +1060,13 @@ function renderSummary(){
   const exDone=(D.fit.ex[TODAY]||[]).filter(i=>day.ex[i]!==undefined).length;
   const fitLabel=day.ex.length? `${exDone}/${day.ex.length}` : (D.fit.log[TODAY]?"✓":"—");
   const v=planVals();
+  const elist=(D.exam.tasks||{})[TODAY]||[];
+  const eDone=elist.filter(x=>x.done).length;
   document.getElementById("summary").innerHTML=`
     <div class="s"><b>${td}/${t.length}</b><span>今日任务</span></div>
     <div class="s"><b>${sd}/${plan.length}</b><span>摄影打卡</span></div>
     <div class="s"><b>${fitLabel}</b><span>今日训练</span></div>
+    <div class="s"><b>${eDone}/${elist.length}</b><span>备考任务</span></div>
     <div class="s"><b>¥${money(spent)}</b><span>今日花费</span></div>
     <div class="s"><b>${v.pct.toFixed(0)}%</b><span>存钱进度</span></div>`;
 }
@@ -918,6 +1074,7 @@ function paint(){
   const d=new Date();
   document.getElementById("hDate").textContent =
     `${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日 · ${WEEK[d.getDay()]}`;
+  ensureExamToday();
   renderSummary(); renderPage();
 }
 function renderAll(){ paint(); renderSubnav(); }
@@ -1038,6 +1195,29 @@ document.body.addEventListener("click", e=>{
     }
     save(); paint(); return;
   }
+
+  const tex=t.closest("[data-toggle-exam]");
+  if(tex){
+    const it=(D.exam.tasks[TODAY]||[]).find(x=>x.id===tex.dataset.toggleExam);
+    if(it){ it.done=!it.done; save(); paint(); }
+    return;
+  }
+  const dex=t.closest("[data-del-exam]");
+  if(dex){
+    D.exam.tasks[TODAY]=(D.exam.tasks[TODAY]||[]).filter(x=>x.id!==dex.dataset.delExam);
+    save(); paint(); return;
+  }
+  if(t.id==="examAddBtn"){
+    const v=document.getElementById("examAdd").value.trim(); if(!v) return;
+    D.exam.tasks[TODAY].push({id:uid(), text:v, done:false});
+    save(); paint(); return;
+  }
+  if(t.id==="tplAddBtn"){
+    const v=document.getElementById("tplAdd").value.trim(); if(!v) return;
+    D.exam.template.push(v); save(); renderPage(); return;
+  }
+  const dt=t.closest("[data-del-tpl]");
+  if(dt){ D.exam.template.splice(+dt.dataset.delTpl,1); save(); renderPage(); return; }
 });
 
 document.body.addEventListener("change", e=>{
@@ -1050,9 +1230,16 @@ document.body.addEventListener("change", e=>{
   if(t.dataset.daytitle!==undefined && t.dataset.daytitle!==""){ D.fit.week[t.dataset.daytitle].name=t.value; save(); return; }
   if(t.dataset.ex){ const [d,i]=t.dataset.ex.split("-"); D.fit.week[d].ex[+i]=t.value; save(); return; }
   if(t.dataset.fit){ D.fit.profile[t.dataset.fit]= t.dataset.fit==="goal"? t.value : (parseFloat(t.value)||0); save(); paint(); return; }
+  if(t.dataset.phaseName){ const p=D.exam.phases.find(x=>x.id===t.dataset.phaseName); if(p) p.name=t.value; save(); return; }
+  if(t.dataset.phaseFrom){ const p=D.exam.phases.find(x=>x.id===t.dataset.phaseFrom); if(p) p.from=t.value; save(); return; }
+  if(t.dataset.phaseTo){ const p=D.exam.phases.find(x=>x.id===t.dataset.phaseTo); if(p) p.to=t.value; save(); return; }
+  if(t.dataset.phaseGoal){ const p=D.exam.phases.find(x=>x.id===t.dataset.phaseGoal); if(p) p.goal=t.value; save(); return; }
+  if(t.dataset.examName){ const x=D.exam.exams.find(a=>a.id===t.dataset.examName); if(x) x.name=t.value; save(); paint(); return; }
+  if(t.dataset.examDate){ const x=D.exam.exams.find(a=>a.id===t.dataset.examDate); if(x) x.date=t.value; save(); paint(); return; }
 });
 document.body.addEventListener("input", e=>{
   if(e.target.id==="stNote"){ D.photo.note[TODAY]=e.target.value; save(); }
+  if(e.target.id==="examNote"){ D.exam.notes[TODAY]=e.target.value; save(); }
 });
 
 /* 计时器 */
